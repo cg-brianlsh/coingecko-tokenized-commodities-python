@@ -1,38 +1,28 @@
 import argparse
 
-from scripts._http import CoinGeckoHttpClient, add_common_arguments
-from scripts._validate import finalize_validation, validate_categories_list
+from _http import CoinGeckoClient
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Discover CoinGecko category IDs (tokenized commodities focused).")
-    add_common_arguments(parser)
-    parser.add_argument("--contains", default="tokenized", help="Substring filter for category_id or name.")
+    parser = argparse.ArgumentParser(description="List tokenized-related CoinGecko category IDs.")
+    parser.add_argument("--contains", default="tokenized", help="Filter by substring in category_id/name.")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    client = CoinGeckoHttpClient(
-        debug=args.debug,
-        save_raw=args.save_raw,
-        out_dir=args.out_dir,
-        timeout=args.timeout,
-        retries=args.retries,
-    )
-
-    data = client.request_json("/coins/categories/list", slug="coins_categories_list")
-    errors = validate_categories_list(data)
-    finalize_validation(errors, args.strict_schema, "GET /coins/categories/list")
+    client = CoinGeckoClient()
+    categories = client.get_json("/coins/categories/list")
 
     needle = args.contains.lower()
     filtered = [
-        x for x in data
-        if needle in x.get("category_id", "").lower() or needle in x.get("name", "").lower()
+        item
+        for item in categories
+        if needle in item.get("category_id", "").lower() or needle in item.get("name", "").lower()
     ]
 
-    print(f"Total categories returned: {len(data)}")
-    print(f"Filtered categories containing '{args.contains}': {len(filtered)}")
+    print(f"Total categories: {len(categories)}")
+    print(f"Matched ({args.contains}): {len(filtered)}")
     for item in filtered:
         print(f"- {item['category_id']}: {item['name']}")
 
